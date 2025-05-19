@@ -8,7 +8,7 @@ namespace bb
 {
   namespace fs = std::filesystem;
 
-  struct delay_part
+  struct delay
   {
     std::size_t on_read;
     std::size_t on_write;
@@ -16,7 +16,7 @@ namespace bb
     std::size_t on_offset;
   };
 
-  struct phlimit_part
+  struct phlimit
   {
     std::size_t ram;
     std::size_t conv;
@@ -24,8 +24,8 @@ namespace bb
 
   struct config
   {
-    delay_part delay;
-    phlimit_part phlimit;
+    delay m_delay;
+    phlimit m_phlimit;
   };
 
   config

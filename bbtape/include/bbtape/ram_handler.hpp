@@ -13,19 +13,25 @@
 namespace bb
 {
   template< unit_type T >
+  using unique_ram = std::unique_ptr< std::vector< T > >;
+
+  template< unit_type T >
+  using ram_view = std::span< T >;
+
+  template< unit_type T >
   class ram_handler
   {
     public:
       ram_handler() = delete;
-      ram_handler(std::unique_ptr< std::vector< T > > ram, std::size_t block_size);
+      ram_handler(unique_ram< T > ram, std::size_t block_size);
 
-      std::span< T > take_ram_block();
-      void free_ram_block(std::span< T > block);
-      std::unique_ptr< std::vector< T > > pick_ram();
+      ram_view< T > take_ram_block();
+      void free_ram_block(ram_view< T > block);
+      unique_ram< T > pick_ram();
 
     private:
-      std::unique_ptr< std::mutex > __mutex;
-      std::unique_ptr< std::vector< T > > __ram;
+      std::mutex __mutex;
+      unique_ram< T > __ram;
       std::vector< std::atomic_flag > __blocks;
       std::size_t __block_size;
   };
@@ -35,8 +41,8 @@ namespace bb
 }
 
 template< bb::unit_type T >
-bb::ram_handler< T >::ram_handler(std::unique_ptr< std::vector< T > > ram, std::size_t block_size):
-  __mutex(std::make_unique< std::mutex >()),
+bb::ram_handler< T >::ram_handler(unique_ram< T > ram, std::size_t block_size):
+  __mutex(),
   __ram(std::move(ram)),
   __blocks(__ram->size() / block_size),
   __block_size(block_size)
@@ -48,10 +54,10 @@ bb::ram_handler< T >::ram_handler(std::unique_ptr< std::vector< T > > ram, std::
 }
 
 template< bb::unit_type T >
-std::span< T >
+bb::ram_view< T >
 bb::ram_handler< T >::take_ram_block()
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   auto tmp = std::find_if(__blocks.begin(), __blocks.end(), [](const std::atomic_flag & flag)
   {
     return !flag.test();
@@ -69,9 +75,9 @@ bb::ram_handler< T >::take_ram_block()
 
 template< bb::unit_type T >
 void
-bb::ram_handler< T >::free_ram_block(std::span< T > block)
+bb::ram_handler< T >::free_ram_block(ram_view< T > block)
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   if (block.data() - __ram->data() < 0)
   {
     throw std::runtime_error("block is not owned by ram!");
@@ -81,10 +87,10 @@ bb::ram_handler< T >::free_ram_block(std::span< T > block)
 }
 
 template< bb::unit_type T >
-std::unique_ptr< std::vector< T > >
+bb::unique_ram< T >
 bb::ram_handler< T >::pick_ram()
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   __blocks.clear();
   __block_size = 0;
   return std::move(__ram);

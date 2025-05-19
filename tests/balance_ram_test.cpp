@@ -2,12 +2,6 @@
 
 #include <bbtape/ram_handler.hpp>
 
-/*
-я сделал один тест и ушел спать
-времени мало осталось, а у меня еще телеком
-поймите пожалуйста
-*/
-
 TEST(balance_ram_test, zero_lhs_size)
 {
   EXPECT_EQ(bb::balance_ram_block(100, 0, 50), 0);

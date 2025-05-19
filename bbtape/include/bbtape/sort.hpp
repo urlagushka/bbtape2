@@ -24,29 +24,28 @@ namespace bb
 
   template< unit_type T >
   void
-  external_merge_sort(config ft_config, const fs::path & src, const fs::path & dst);
+  external_merge_sort(config m_config, const fs::path & src, const fs::path & dst);
 }
 
 template< bb::unit_type T >
 void
-bb::external_merge_sort(config ft_config, const fs::path & src, const fs::path & dst)
+bb::external_merge_sort(config m_config, const fs::path & src, const fs::path & dst)
 {
   auto src_tape = std::make_unique< unit< T > >(read_tape_from_file< T >(src));
-  auto dst_tape = std::make_unique< unit< T > >(unit< T >(src_tape->size()));
 
-  const std::size_t ram_size = ft_config.phlimit.ram / sizeof(T);
+  const std::size_t ram_size = m_config.m_phlimit.ram / sizeof(T);
   auto ram = std::make_unique< std::vector< T > >(ram_size);
 
-  sort_params pm = get_sort_params(src_tape->size(), ram_size, ft_config.phlimit.conv);
+  sort_params pm = get_sort_params(src_tape->size(), ram_size, m_config.m_phlimit.conv);
   if (pm.thread_amount == 0)
   {
     throw std::runtime_error("conv amount is zero!");
   }
-  
-  std::vector< tape_handler< T > > ths;
-  for (std::size_t i = 0; i < ft_config.phlimit.conv; ++i)
+
+  std::vector< shared_tape_handler< T > > ths;
+  for (std::size_t i = 0; i < m_config.m_phlimit.conv; ++i)
   {
-    ths.emplace_back(ft_config);
+    ths.push_back(std::make_shared< tape_handler< T > >(m_config));
   }
 
   auto files_tape_ram = split_src_unit< T >(std::move(src_tape), ths[0], pm.file_amount, std::move(ram));

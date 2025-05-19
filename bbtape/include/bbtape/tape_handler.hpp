@@ -5,6 +5,8 @@
 #include <memory>
 #include <mutex>
 #include <fstream>
+#include <thread>
+#include <chrono>
 
 #include <bbtape/config.hpp>
 #include <bbtape/utils.hpp>
@@ -51,11 +53,11 @@ namespace bb
       void free();
       bool is_reserved() const;
 
-      std::size_t get_pos_vl() const;
+      std::size_t get_pos() const;
       std::size_t size() const;
 
     private:
-      std::unique_ptr< std::mutex > __mutex;
+      std::mutex __mutex;
 
       std::unique_ptr< unit< T > > __tape;
       std::size_t __pos;
@@ -65,8 +67,17 @@ namespace bb
       std::size_t __delay_on_roll;
       std::size_t __delay_on_offset;
 
-      bool __is_reserved;
+      std::atomic_flag __is_reserved;
   };
+
+  template< unit_type T >
+  using shared_tape_handler = std::shared_ptr< tape_handler< T > >;
+
+  template< unit_type T >
+  using shared_tape_handlers = std::vector< shared_tape_handler< T > >;
+
+  template< unit_type T >
+  using shared_tape_handlers_view = std::span< shared_tape_handler< T > >;
 
   template< unit_type T >
   unit< T >
@@ -79,14 +90,14 @@ namespace bb
 
 template< bb::unit_type T >
 bb::tape_handler< T >::tape_handler(config rhs):
-  __mutex(std::make_unique< std::mutex >()),
+  __mutex(),
   __tape(nullptr),
   __pos(0),
 
-  __delay_on_read(rhs.delay.on_read),
-  __delay_on_write(rhs.delay.on_write),
-  __delay_on_roll(rhs.delay.on_roll),
-  __delay_on_offset(rhs.delay.on_offset),
+  __delay_on_read(rhs.m_delay.on_read),
+  __delay_on_write(rhs.m_delay.on_write),
+  __delay_on_roll(rhs.m_delay.on_roll),
+  __delay_on_offset(rhs.m_delay.on_offset),
   __is_reserved(false)
 {}
 
@@ -94,7 +105,7 @@ template< bb::unit_type T >
 T
 bb::tape_handler< T >::read()
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_read));
 
   if (!__tape)
@@ -117,7 +128,7 @@ template< bb::unit_type T >
 void
 bb::tape_handler< T >::write(T new_data)
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_write));
 
   if (!__tape)
@@ -140,7 +151,7 @@ template< bb::unit_type T >
 void
 bb::tape_handler< T >::roll(std::size_t new_pos)
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_roll));
 
   if (new_pos > __tape->size())
@@ -155,7 +166,7 @@ template< bb::unit_type T >
 void
 bb::tape_handler< T >::offset(int direction)
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_offset));
 
   if (__pos == 0 && direction < 0)
@@ -174,7 +185,7 @@ template< bb::unit_type T >
 void
 bb::tape_handler< T >::offset_if_possible(int direction)
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_offset));
 
   if (__pos == 0 && direction < 0)
@@ -193,7 +204,7 @@ template< bb::unit_type T >
 void
 bb::tape_handler< T >::setup_tape(std::unique_ptr< unit< T > > rhs)
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   __tape = std::move(rhs);
   __pos = 0;
 }
@@ -202,7 +213,7 @@ template< bb::unit_type T >
 std::unique_ptr< bb::unit< T > >
 bb::tape_handler< T >::release_tape()
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   return std::move(__tape);
 }
 
@@ -217,39 +228,39 @@ template< bb::unit_type T >
 void
 bb::tape_handler< T >::take()
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
 
-  if (__is_reserved || !is_available())
+  if (__is_reserved.test() || !is_available())
   {
     throw std::runtime_error("can not take tape handler!");
   }
 
-  __is_reserved = true;
+  __is_reserved.test_and_set();
 }
 
 template< bb::unit_type T >
 void
 bb::tape_handler< T >::free()
 {
-  std::lock_guard< std::mutex > lock(*__mutex);
+  std::lock_guard< std::mutex > lock(__mutex);
   if (!is_available())
   {
     throw std::runtime_error("can not free tape handler!");
   }
 
-  __is_reserved = false;
+  __is_reserved.clear();
 }
 
 template< bb::unit_type T >
 bool
 bb::tape_handler< T >::is_reserved() const
 {
-  return __is_reserved;
+  return __is_reserved.test();
 }
 
 template< bb::unit_type T >
 std::size_t
-bb::tape_handler< T >::get_pos_vl() const
+bb::tape_handler< T >::get_pos() const
 {
   return __pos;
 }

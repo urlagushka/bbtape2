@@ -90,14 +90,14 @@ bb::read_config_from_file(const fs::path & path)
 
   config valid_config;
 
-  valid_config.delay = {
+  valid_config.m_delay = {
     tmp["delay"]["on_read"],
     tmp["delay"]["on_write"],
     tmp["delay"]["on_roll"],
     tmp["delay"]["on_offset"]
   };
 
-  valid_config.phlimit = {
+  valid_config.m_phlimit = {
     tmp["physical_limit"]["ram"],
     tmp["physical_limit"]["conv"]
   };

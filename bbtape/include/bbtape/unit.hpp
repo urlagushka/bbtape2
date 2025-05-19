@@ -1,6 +1,9 @@
 #ifndef BBTAPE_UNIT_HPP
 #define BBTAPE_UNIT_HPP
 
+#include <vector>
+#include <memory>
+
 #include <bbtape/json.hpp>
 
 namespace bb
@@ -26,6 +29,9 @@ namespace bb
 
   template< unit_type T >
   using unit = std::vector< T >;
+
+  template< unit_type T >
+  using unique_unit = std::unique_ptr< unit< T > >;
 }
 
 #endif

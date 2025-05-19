@@ -15,48 +15,51 @@
 
 namespace
 {
-  template< bb::unit_type T >
-  std::size_t
-  read_from_tape_to_ram_without_roll(bb::tape_handler< T > & th, std::size_t lhs, std::size_t rhs, std::span< T > ram)
+  using namespace bb;
+  using namespace std;
+
+  template< unit_type T >
+  size_t
+  read_from_tape_to_ram_without_roll(shared_tape_handler< T > th, size_t lhs, size_t rhs, ram_view< T > ram)
   {
     std::size_t was_read = 0;
     for (std::size_t pos = lhs; pos < rhs; ++pos, ++was_read)
     {
-      ram[pos] = th.read();
-      if (th.get_pos_vl() + 1 == th.size())
+      ram[pos] = th->read();
+      if (th->get_pos() + 1 == th->size())
       {
         ++was_read;
         break;
       }
-      th.offset(1);
+      th->offset(1);
     }
 
     return was_read;
   }
 
-  template< bb::unit_type T >
-  std::size_t
-  read_from_tape_to_ram(bb::tape_handler< T > & th, std::size_t lhs, std::size_t rhs, std::size_t off, std::span< T > ram)
+  template< unit_type T >
+  size_t
+  read_from_tape_to_ram(shared_tape_handler< T > th, size_t lhs, size_t rhs, size_t off, ram_view< T > ram)
   {
-    th.roll(off);
+    th->roll(off);
     return read_from_tape_to_ram_without_roll(th, lhs, rhs, ram);
   }
 
-  template< bb::unit_type T >
-  bb::tape_handler< T > &
-  take_tape_handler(std::span< bb::tape_handler< T > > src)
+  template< unit_type T >
+  shared_tape_handler< T >
+  take_tape_handler(std::span< shared_tape_handler< T > > src)
   {
-    auto dst = std::find_if(src.begin(), src.end(), [](bb::tape_handler< T > & th)
+    auto dst = std::find_if(src.begin(), src.end(), [](shared_tape_handler< T > th)
     {
-      return !th.is_reserved();
+      return !th->is_reserved();
     });
 
     if (dst == src.end())
     {
-      throw std::runtime_error("can not find available tape handler!");
+      throw std::runtime_error("can't find available tape handler!");
     }
 
-    dst->take();
+    (*dst)->take();
 
     return *dst;
   }
@@ -67,33 +70,21 @@ namespace bb
   using c_path_l = const fs::path &;
 
   template< unit_type T >
-  using th_l = tape_handler< T > &;
+  std::pair< file_handler, unique_ram< T > >
+  strategy(const file_handler & src, shared_tape_handlers_view< T > ths, unique_ram< T > ram, std::size_t blk_size, std::size_t threads);
 
   template< unit_type T >
-  using u_vec = std::unique_ptr< std::vector< T > >;
-
-  template< unit_type T >
-  using u_unit = std::unique_ptr< unit < T > >;
-
-  template< unit_type T >
-  using th_span = std::span< tape_handler< T > >;
-
-  template< unit_type T >
-  std::pair< file_handler, u_vec< T > >
-  strategy(const file_handler & src, th_span< T > ths, u_vec< T > ram, std::size_t block_size, std::size_t thread_amount);
-
-  template< unit_type T >
-  std::tuple< file_handler, u_unit< T >, u_vec< T > >
-  split_src_unit(u_unit< T > src, th_l< T > th, std::size_t file_amount, u_vec< T > ram);
+  std::tuple< file_handler, unique_unit< T >, unique_ram< T > >
+  split_src_unit(unique_unit< T > src, shared_tape_handler< T > th, std::size_t file_amount, unique_ram< T > ram);
 
   template< unit_type T >
   fs::path
-  sort_handler(th_l< T > th_1, c_path_l lhs, c_path_l rhs, std::span< T > ram);
+  merge(shared_tape_handler< T > th, c_path_l lhs, c_path_l rhs, std::span< T > ram);
 }
 
 template< bb::unit_type T >
-std::pair< bb::file_handler, bb::u_vec< T > >
-bb::strategy(const file_handler & src, th_span< T > ths, u_vec< T > ram, std::size_t block_size, std::size_t thread_amount)
+std::pair< bb::file_handler, bb::unique_ram< T > >
+bb::strategy(const file_handler & src, shared_tape_handlers_view< T > ths, unique_ram< T > ram, std::size_t block_size, std::size_t threads)
 {
   if (ths.size() < 1)
   {
@@ -103,36 +94,35 @@ bb::strategy(const file_handler & src, th_span< T > ths, u_vec< T > ram, std::si
   file_handler dst;
   ram_handler rhandler(std::move(ram), block_size);
 
-  using th_rw = std::reference_wrapper< tape_handler< T > >;
-  using sort_tuple = std::tuple< std::future< fs::path >, th_rw, std::span< T > >;
+  using sort_tuple = std::tuple< std::future< fs::path >, shared_tape_handler< T >, std::span< T > >;
   std::queue< sort_tuple > sort_queue;
   for (std::size_t i = 0; i < src.size(); i = i + 2)
   {
-    if (sort_queue.size() == thread_amount)
+    if (sort_queue.size() == threads)
     {
       auto future_2th = std::move(sort_queue.front());
       sort_queue.pop();
 
       auto file = std::move(std::get< 0 >(future_2th));
-      auto & th = std::get< 1 >(future_2th);
+      auto th = std::get< 1 >(future_2th);
       auto block = std::get< 2 >(future_2th);
 
       dst.push_back(file.get());
-      th.get().free();
+      th->free();
       rhandler.free_ram_block(block);
     }
-    auto & th = take_tape_handler< T >(ths);
+    auto th = take_tape_handler< T >(ths);
     const auto & lhs = src[i];
     const auto & rhs = src[i + 1];
     auto block = rhandler.take_ram_block();
-    auto tmp_future = std::async(std::launch::async, sort_handler< T >,
-      std::ref(th),
+    auto tmp_future = std::async(std::launch::async, merge< T >,
+      th,
       std::cref(lhs),
       std::cref(rhs),
       block
     );
 
-    auto to_push = std::make_tuple(std::move(tmp_future), std::ref(th), block);
+    auto to_push = std::make_tuple(std::move(tmp_future), th, block);
     sort_queue.push(std::move(to_push));
   }
 
@@ -140,11 +130,11 @@ bb::strategy(const file_handler & src, th_span< T > ths, u_vec< T > ram, std::si
   {
     auto future_2th = std::move(sort_queue.front());
     auto file = std::move(std::get< 0 >(future_2th));
-    auto & th = std::get< 1 >(future_2th);
+    auto th = std::get< 1 >(future_2th);
     auto block = std::get< 2 >(future_2th);
 
     dst.push_back(file.get());
-    th.get().free();
+    th->free();
     rhandler.free_ram_block(block);
 
     sort_queue.pop();
@@ -161,12 +151,16 @@ bb::strategy(const file_handler & src, th_span< T > ths, u_vec< T > ram, std::si
 }
 
 template< bb::unit_type T >
-std::tuple< bb::file_handler, bb::u_unit< T >, bb::u_vec< T > >
-bb::split_src_unit(u_unit< T > src, th_l< T > th, std::size_t file_amount, u_vec< T > ram)
+std::tuple< bb::file_handler, bb::unique_unit< T >, bb::unique_ram< T > >
+bb::split_src_unit(unique_unit< T > src, shared_tape_handler< T > th, std::size_t file_amount, unique_ram< T > ram)
 {
-  if (!th.is_available())
+  if (!th)
   {
-    throw std::runtime_error("split_src_file: tape_handler is unavailable!");
+    throw std::runtime_error("split_src_unit: tape_handler is null!");
+  }
+  if (!th->is_available())
+  {
+    throw std::runtime_error("split_src_unit: tape_handler is unavailable!");
   }
 
   file_handler dst;
@@ -183,25 +177,25 @@ bb::split_src_unit(u_unit< T > src, th_l< T > th, std::size_t file_amount, u_vec
       write_tape_to_file< T >(tmp_file, {});
       continue;
     }
-    th.setup_tape(std::move(src));
+    th->setup_tape(std::move(src));
     std::size_t was_read = read_from_tape_to_ram< T >(th, 0, ram_size, src_offset, *ram);
     src_offset = src_offset + was_read;
-    src = th.release_tape();
+    src = th->release_tape();
 
     std::sort(ram->begin(), ram->begin() + was_read);
 
     auto tmp_tape = std::make_unique< unit< T > >(was_read);
-    th.setup_tape(std::move(tmp_tape));
+    th->setup_tape(std::move(tmp_tape));
     for (std::size_t i = 0; i < was_read; ++i)
     {
-      th.write((*ram)[i]);
-      if (th.get_pos_vl() + 1 >= th.size())
+      th->write((*ram)[i]);
+      if (th->get_pos() + 1 >= th->size())
       {
         break;
       }
-      th.offset(1);
+      th->offset(1);
     }
-    tmp_tape = th.release_tape();
+    tmp_tape = th->release_tape();
     write_tape_to_file< T >(tmp_file, *tmp_tape);
   }
 
@@ -210,15 +204,19 @@ bb::split_src_unit(u_unit< T > src, th_l< T > th, std::size_t file_amount, u_vec
 
 template< bb::unit_type T >
 bb::fs::path
-bb::sort_handler(th_l< T > th_1, c_path_l lhs, c_path_l rhs, std::span< T > ram)
+bb::merge(shared_tape_handler< T > th, c_path_l lhs, c_path_l rhs, std::span< T > ram)
 {
-  if (!th_1.is_available())
+  if (!th)
   {
-    throw std::runtime_error("sort_handler_1: tape_handler is unavailable!");
+    throw std::runtime_error("merge: tape_handler is null!");
+  }
+  if (!th->is_available())
+  {
+    throw std::runtime_error("merge: tape_handler is unavailable!");
   }
   if (ram.size() < 2)
   {
-    throw std::runtime_error("sort_handler_1: ram size is too small!");
+    throw std::runtime_error("merge: ram size is too small!");
   }
 
   auto lhs_tape = std::make_unique< unit< T > >(read_tape_from_file< T >(lhs));
@@ -257,85 +255,85 @@ bb::sort_handler(th_l< T > th_1, c_path_l lhs, c_path_l rhs, std::span< T > ram)
 
     if (lhs_ram_pos == to_write_lhs)
     {
-      th_1.setup_tape(std::move(lhs_tape));
-      to_write_lhs = read_from_tape_to_ram< T >(th_1, 0, lhs_ram.size(), lhs_pos, lhs_ram);
-      lhs_tape = th_1.release_tape();
+      th->setup_tape(std::move(lhs_tape));
+      to_write_lhs = read_from_tape_to_ram< T >(th, 0, lhs_ram.size(), lhs_pos, lhs_ram);
+      lhs_tape = th->release_tape();
       lhs_ram_pos = 0;
     }
 
     if (rhs_ram_pos == to_write_rhs)
     {
-      th_1.setup_tape(std::move(rhs_tape));
-      to_write_rhs = read_from_tape_to_ram< T >(th_1, 0, rhs_ram.size(), rhs_pos, rhs_ram);
-      rhs_tape = th_1.release_tape();
+      th->setup_tape(std::move(rhs_tape));
+      to_write_rhs = read_from_tape_to_ram< T >(th, 0, rhs_ram.size(), rhs_pos, rhs_ram);
+      rhs_tape = th->release_tape();
       rhs_ram_pos = 0;
     }
 
-    th_1.setup_tape(std::move(dst_tape));
-    th_1.roll(dst_pos);
+    th->setup_tape(std::move(dst_tape));
+    th->roll(dst_pos);
     while (lhs_ram_pos < to_write_lhs && rhs_ram_pos < to_write_rhs)
     {
       auto lhs_value = lhs_ram[lhs_ram_pos];
       auto rhs_value = rhs_ram[rhs_ram_pos];
       if (lhs_value < rhs_value)
       {
-        th_1.write(lhs_value);
+        th->write(lhs_value);
         ++lhs_pos;
         ++lhs_ram_pos;
       }
       else
       {
-        th_1.write(rhs_value);
+        th->write(rhs_value);
         ++rhs_pos;
         ++rhs_ram_pos;
       }
 
-      th_1.offset_if_possible(1);
+      th->offset_if_possible(1);
       ++dst_pos;
     }
-    dst_tape = th_1.release_tape();
+    dst_tape = th->release_tape();
   }
 
   while (lhs_pos < lhs_size)
   {
-    th_1.setup_tape(std::move(lhs_tape));
-    to_write_lhs = read_from_tape_to_ram< T >(th_1, 0, ram.size(), lhs_pos, ram);
-    lhs_tape = th_1.release_tape();
+    th->setup_tape(std::move(lhs_tape));
+    to_write_lhs = read_from_tape_to_ram< T >(th, 0, ram.size(), lhs_pos, ram);
+    lhs_tape = th->release_tape();
     lhs_ram_pos = 0;
 
-    th_1.setup_tape(std::move(dst_tape));
-    th_1.roll(dst_pos);
+    th->setup_tape(std::move(dst_tape));
+    th->roll(dst_pos);
     while (lhs_ram_pos < to_write_lhs)
     {
       auto value = ram[lhs_ram_pos];
-      th_1.write(value);
+      th->write(value);
       ++lhs_pos;
       ++lhs_ram_pos;
       ++dst_pos;
-      th_1.offset_if_possible(1);
+      th->offset_if_possible(1);
     }
-    dst_tape = th_1.release_tape();
+    dst_tape = th->release_tape();
   }
 
   while (rhs_pos < rhs_size)
   {
-    th_1.setup_tape(std::move(rhs_tape));
-    to_write_rhs = read_from_tape_to_ram< T >(th_1, 0, ram.size(), rhs_pos, ram);
-    rhs_tape = th_1.release_tape();
+    th->setup_tape(std::move(rhs_tape));
+    to_write_rhs = read_from_tape_to_ram< T >(th, 0, ram.size(), rhs_pos, ram);
+    rhs_tape = th->release_tape();
     rhs_ram_pos = 0;
 
-    th_1.setup_tape(std::move(dst_tape));
-    th_1.roll(dst_pos);
+    th->setup_tape(std::move(dst_tape));
+    th->roll(dst_pos);
     while (rhs_ram_pos < to_write_rhs)
     {
       auto value = ram[rhs_ram_pos];
-      th_1.write(value);
+      th->write(value);
       ++rhs_pos;
       ++rhs_ram_pos;
       ++dst_pos;
-      th_1.offset_if_possible(1);
+      th->offset_if_possible(1);
     }
-    dst_tape = th_1.release_tape();
+    dst_tape = th->release_tape();
   }
 
   assert(dst_pos == dst_size);
