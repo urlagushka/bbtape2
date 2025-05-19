@@ -57,27 +57,24 @@ template< bb::unit_type T >
 bb::ram_view< T >
 bb::ram_handler< T >::take_ram_block()
 {
-  std::lock_guard< std::mutex > lock(__mutex);
-  auto tmp = std::find_if(__blocks.begin(), __blocks.end(), [](const std::atomic_flag & flag)
+  auto tmp = std::find_if(__blocks.begin(), __blocks.end(), [](std::atomic_flag & flag)
   {
-    return !flag.test();
+    return !flag.test_and_set();
   });
   if (tmp == __blocks.end())
   {
     throw std::runtime_error("no available ram!");
   }
-  tmp->test_and_set();
 
   std::size_t offset = std::distance(__blocks.begin(), tmp);
   auto start = __ram->data() + offset * __block_size;
-  return std::span< T >{start, start + __block_size};
+  return ram_view< T >{start, start + __block_size};
 }
 
 template< bb::unit_type T >
 void
 bb::ram_handler< T >::free_ram_block(ram_view< T > block)
 {
-  std::lock_guard< std::mutex > lock(__mutex);
   if (block.data() - __ram->data() < 0)
   {
     throw std::runtime_error("block is not owned by ram!");

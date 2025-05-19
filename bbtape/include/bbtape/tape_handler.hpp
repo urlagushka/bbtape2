@@ -57,7 +57,7 @@ namespace bb
       std::size_t size() const;
 
     private:
-      std::mutex __mutex;
+      mutable std::mutex __mutex;
 
       std::unique_ptr< unit< T > > __tape;
       std::size_t __pos;
@@ -67,7 +67,7 @@ namespace bb
       std::size_t __delay_on_roll;
       std::size_t __delay_on_offset;
 
-      std::atomic_flag __is_reserved;
+      bool __is_reserved;
   };
 
   template< unit_type T >
@@ -154,6 +154,10 @@ bb::tape_handler< T >::roll(std::size_t new_pos)
   std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_roll));
 
+  if (!__tape)
+  {
+    throw std::runtime_error("can't roll tape! (no tape)");
+  }
   if (new_pos > __tape->size())
   {
     throw std::runtime_error("can't roll tape! (new position is greater than tape size)");
@@ -169,6 +173,10 @@ bb::tape_handler< T >::offset(int direction)
   std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_offset));
 
+  if (!__tape)
+  {
+    throw std::runtime_error("can't offset tape! (no tape)");
+  }
   if (__pos == 0 && direction < 0)
   {
     throw std::runtime_error("can't offset tape! (new position is less than 0)");
@@ -188,6 +196,10 @@ bb::tape_handler< T >::offset_if_possible(int direction)
   std::lock_guard< std::mutex > lock(__mutex);
   std::this_thread::sleep_for(std::chrono::milliseconds(__delay_on_offset));
 
+  if (!__tape)
+  {
+    return;
+  }
   if (__pos == 0 && direction < 0)
   {
     return;
@@ -221,7 +233,8 @@ template< bb::unit_type T >
 bool
 bb::tape_handler< T >::is_available() const
 {
-  return (__tape) ? false : true;
+  std::lock_guard< std::mutex > lock(__mutex);
+  return !__tape;
 }
 
 template< bb::unit_type T >
@@ -229,13 +242,12 @@ void
 bb::tape_handler< T >::take()
 {
   std::lock_guard< std::mutex > lock(__mutex);
-
-  if (__is_reserved.test() || !is_available())
+  if (__is_reserved)
   {
-    throw std::runtime_error("can not take tape handler!");
+    throw std::runtime_error("can't take tape handler!");
   }
 
-  __is_reserved.test_and_set();
+  __is_reserved = true;
 }
 
 template< bb::unit_type T >
@@ -243,25 +255,27 @@ void
 bb::tape_handler< T >::free()
 {
   std::lock_guard< std::mutex > lock(__mutex);
-  if (!is_available())
+  if (__tape)
   {
-    throw std::runtime_error("can not free tape handler!");
+    throw std::runtime_error("can't free with active tape!");
   }
 
-  __is_reserved.clear();
+  __is_reserved = false;
 }
 
 template< bb::unit_type T >
 bool
 bb::tape_handler< T >::is_reserved() const
 {
-  return __is_reserved.test();
+  std::lock_guard< std::mutex > lock(__mutex);
+  return __is_reserved;
 }
 
 template< bb::unit_type T >
 std::size_t
 bb::tape_handler< T >::get_pos() const
 {
+  std::lock_guard< std::mutex > lock(__mutex);
   return __pos;
 }
 
@@ -269,6 +283,12 @@ template< bb::unit_type T >
 std::size_t
 bb::tape_handler< T >::size() const
 {
+  std::lock_guard< std::mutex > lock(__mutex);
+  if (!__tape)
+  {
+    throw std::runtime_error("tape_handler::size: tape is null!");
+  }
+
   return __tape->size();
 }
 

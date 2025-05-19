@@ -25,7 +25,7 @@ int main(int argc, char ** argv)
     auto valid_dst_path = bb::utils::get_path_from_string(dst_path);
     auto valid_config = bb::read_config_from_file(valid_src_path);
 
-    bb::external_merge_sort< int32_t >(valid_config, valid_src_path, valid_dst_path);
+    bb::external_merge_sort< int32_t >(valid_config, valid_src_path, valid_dst_path, true);
   }
   catch (const std::format_error & error)
   {

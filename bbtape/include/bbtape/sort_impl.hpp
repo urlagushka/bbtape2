@@ -47,16 +47,16 @@ namespace
 
   template< unit_type T >
   shared_tape_handler< T >
-  take_tape_handler(std::span< shared_tape_handler< T > > src)
+  take_tape_handler(shared_tape_handlers_view< T > src)
   {
-    auto dst = std::find_if(src.begin(), src.end(), [](shared_tape_handler< T > th)
+    auto dst = find_if(src.begin(), src.end(), [](shared_tape_handler< T > th)
     {
       return !th->is_reserved();
     });
 
     if (dst == src.end())
     {
-      throw std::runtime_error("can't find available tape handler!");
+      throw runtime_error("can't find available tape handler!");
     }
 
     (*dst)->take();
@@ -67,8 +67,6 @@ namespace
 
 namespace bb
 {
-  using c_path_l = const fs::path &;
-
   template< unit_type T >
   std::pair< file_handler, unique_ram< T > >
   strategy(const file_handler & src, shared_tape_handlers_view< T > ths, unique_ram< T > ram, std::size_t blk_size, std::size_t threads);
@@ -79,7 +77,7 @@ namespace bb
 
   template< unit_type T >
   fs::path
-  merge(shared_tape_handler< T > th, c_path_l lhs, c_path_l rhs, std::span< T > ram);
+  merge(shared_tape_handler< T > th, const fs::path & lhs, const fs::path & rhs, ram_view< T > ram);
 }
 
 template< bb::unit_type T >
@@ -94,7 +92,7 @@ bb::strategy(const file_handler & src, shared_tape_handlers_view< T > ths, uniqu
   file_handler dst;
   ram_handler rhandler(std::move(ram), block_size);
 
-  using sort_tuple = std::tuple< std::future< fs::path >, shared_tape_handler< T >, std::span< T > >;
+  using sort_tuple = std::tuple< std::future< fs::path >, shared_tape_handler< T >, ram_view< T > >;
   std::queue< sort_tuple > sort_queue;
   for (std::size_t i = 0; i < src.size(); i = i + 2)
   {
@@ -204,7 +202,7 @@ bb::split_src_unit(unique_unit< T > src, shared_tape_handler< T > th, std::size_
 
 template< bb::unit_type T >
 bb::fs::path
-bb::merge(shared_tape_handler< T > th, c_path_l lhs, c_path_l rhs, std::span< T > ram)
+bb::merge(shared_tape_handler< T > th, const fs::path & lhs, const fs::path & rhs, ram_view< T > ram)
 {
   if (!th)
   {
@@ -234,8 +232,8 @@ bb::merge(shared_tape_handler< T > th, c_path_l lhs, c_path_l rhs, std::span< T 
   std::size_t to_write_lhs = 0;
   std::size_t to_write_rhs = 0;
 
-  std::span< T > lhs_ram{};
-  std::span< T > rhs_ram{};
+  ram_view< T > lhs_ram{};
+  ram_view< T > rhs_ram{};
 
   std::size_t lhs_ram_pos = 0;
   std::size_t rhs_ram_pos = 0;
@@ -275,7 +273,7 @@ bb::merge(shared_tape_handler< T > th, c_path_l lhs, c_path_l rhs, std::span< T 
     {
       auto lhs_value = lhs_ram[lhs_ram_pos];
       auto rhs_value = rhs_ram[rhs_ram_pos];
-      if (lhs_value < rhs_value)
+      if (lhs_value <= rhs_value)
       {
         th->write(lhs_value);
         ++lhs_pos;
