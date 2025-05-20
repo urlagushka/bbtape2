@@ -106,13 +106,13 @@ tape - исходная лента
 Как можно заметить, в один момент время сортировки перестает уменьшаться (с ростом количества устройств, блок ОЗУ для слияния становится меньше)
 
 #### ram: 256
-![ram256](https://github.com/urlagushka/bbtape/blob/main/pictures/ram256.png)
+![ram256](https://github.com/urlagushka/bbtape2/blob/main/pictures/ram256.png)
 #### ram: 512
-![ram512](https://github.com/urlagushka/bbtape/blob/main/pictures/ram512.png)
+![ram512](https://github.com/urlagushka/bbtape2/blob/main/pictures/ram512.png)
 #### ram: 1024
-![ram1024](https://github.com/urlagushka/bbtape/blob/main/pictures/ram1024.png)
+![ram1024](https://github.com/urlagushka/bbtape2/blob/main/pictures/ram1024.png)
 #### ram: 2048
-![ram2048](https://github.com/urlagushka/bbtape/blob/main/pictures/ram2048.png)
+![ram2048](https://github.com/urlagushka/bbtape2/blob/main/pictures/ram2048.png)
 
 ### Сборка и запуск
 #### MacOS (необходим gcc14)
