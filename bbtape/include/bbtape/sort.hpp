@@ -61,6 +61,7 @@ bb::external_merge_sort(config m_config, const fs::path & src, const fs::path & 
   for (std::size_t i = 0; i < m_config.m_phlimit.conv; ++i)
   {
     ths.push_back(std::make_shared< tape_handler< T > >(m_config));
+    ths.back()->id = i;
   }
 
   if (is_bench)

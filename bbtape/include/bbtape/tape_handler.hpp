@@ -36,6 +36,8 @@ namespace bb
   class tape_handler
   {
     public:
+      std::size_t id;
+
       tape_handler() = delete;
       tape_handler(config ft_config);
 
