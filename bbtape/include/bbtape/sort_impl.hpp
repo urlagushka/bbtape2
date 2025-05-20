@@ -354,7 +354,7 @@ bb::merge(shared_tape_handler< T > th, const fs::path & lhs, const fs::path & rh
 
   assert(dst_pos == dst_size);
 
-  auto dst = utils::create_tmp_file();
+  auto dst = utils::atomic_create_tmp_file();
   write_tape_to_file< T >(dst, *dst_tape);
   return dst;
 }

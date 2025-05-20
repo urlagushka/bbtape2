@@ -15,6 +15,9 @@ namespace bb::utils
   fs::path
   create_tmp_file();
 
+  fs::path
+  atomic_create_tmp_file();
+
   void
   remove_file(const fs::path & path);
 

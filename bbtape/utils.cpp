@@ -6,22 +6,38 @@
 #include <stdexcept>
 #include <algorithm>
 #include <fstream>
+#include <mutex>
 
 bb::utils::fs::path
 bb::utils::create_tmp_file()
 {
   fs::path tmp_path = fs::temp_directory_path();
-  fs::path filename = std::format("bbtape_{}.json", std::chrono::system_clock::now());
-  fs::path full_path = tmp_path / filename;
+  fs::path full_path;
+  std::size_t count = 0;
+  auto time = std::chrono::system_clock::now().time_since_epoch().count();
+  do
+  {
+    fs::path filename = std::format("bbtape_{}_{}.json", time, count++);
+    full_path = tmp_path / filename;
+  }
+  while (fs::exists(full_path));
 
   std::ofstream tmp(full_path);
   if (!tmp.is_open())
   {
-    throw std::runtime_error("can not create file!");
+    throw std::runtime_error("can't create file!");
   }
   tmp.close();
 
   return full_path;
+}
+
+bb::utils::fs::path
+bb::utils::atomic_create_tmp_file()
+{
+  static std::mutex mutex;
+  std::lock_guard< std::mutex > lock(mutex);
+  return create_tmp_file();
 }
 
 void
