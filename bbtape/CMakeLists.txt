@@ -7,7 +7,6 @@ add_library(bbtape
   ram_handler.cpp
   config.cpp
   utils.cpp
-  sort.cpp
 )
 
 target_include_directories(bbtape PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

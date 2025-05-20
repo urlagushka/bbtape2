@@ -105,15 +105,9 @@ bb::strategy(const file_handler & src, shared_tape_handlers_view< T > ths, uniqu
       auto th = std::get< 1 >(future_2th);
       auto block = std::get< 2 >(future_2th);
 
-      auto ff = file.get();
-      dst.push_back(ff);
+      dst.push_back(file.get());
       th->free();
       rhandler.free_ram_block(block);
-
-      std::cout << "FREE\n";
-      std::cout << std::format("th_id: {}\n", th->id);
-      std::cout << "ram: " << block.data() << "\n";
-      std::cout << "dst: " << ff.filename().string() << "\n";
     }
     auto th = take_tape_handler< T >(ths);
     const auto & lhs = src[i];
@@ -128,12 +122,6 @@ bb::strategy(const file_handler & src, shared_tape_handlers_view< T > ths, uniqu
 
     auto to_push = std::make_tuple(std::move(tmp_future), th, block);
     sort_queue.push(std::move(to_push));
-
-    std::cout << "TAKE\n";
-    std::cout << std::format("th_id: {}\n", th->id);
-    std::cout << "ram: " << block.data() << "\n";
-    std::cout << "lhs: " << lhs.filename().string() << "\n";
-    std::cout << "rhs: " << rhs.filename().string() << "\n";
   }
 
   while (!sort_queue.empty())
@@ -143,17 +131,11 @@ bb::strategy(const file_handler & src, shared_tape_handlers_view< T > ths, uniqu
     auto th = std::get< 1 >(future_2th);
     auto block = std::get< 2 >(future_2th);
 
-    auto ff = file.get();
-    dst.push_back(ff);
+    dst.push_back(file.get());
     th->free();
     rhandler.free_ram_block(block);
 
     sort_queue.pop();
-
-    std::cout << "FREE\n";
-    std::cout << std::format("th_id: {}\n", th->id);
-    std::cout << "ram: " << block.data() << "\n";
-    std::cout << "dst: " << ff.filename().string() << "\n";
   }
 
   if (dst.size() % 2 != 0 && dst.size() != 1)

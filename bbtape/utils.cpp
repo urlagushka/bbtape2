@@ -1,6 +1,5 @@
 #include <bbtape/utils.hpp>
 
-#include <chrono>
 #include <string>
 #include <format>
 #include <stdexcept>
@@ -25,7 +24,7 @@ bb::utils::create_tmp_file()
   std::ofstream tmp(full_path);
   if (!tmp.is_open())
   {
-    throw std::runtime_error("can't create file!");
+    throw std::runtime_error("create_tmp_file: can't create file!");
   }
   tmp.close();
 
@@ -69,6 +68,6 @@ bb::utils::verify_file_path(const fs::path & path)
   }
   if (path.extension() != ".json")
   {
-    throw std::runtime_error("file extension is bad! (.json required)");
+    throw std::runtime_error("verify_file_path: .json required!");
   }
 }

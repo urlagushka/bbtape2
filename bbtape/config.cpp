@@ -11,41 +11,41 @@ namespace
   {
     if (!file.contains("delay"))
     {
-      throw std::runtime_error("source file is bad! (field delay missed)");
+      throw std::runtime_error("verify_delay_field: field delay missed!");
     }
 
     if (!file["delay"].contains("on_read"))
     {
-      throw std::runtime_error("source file is bad! (field delay.on_read missed)");
+      throw std::runtime_error("verify_delay_field: field delay.on_read missed!");
     }
     if (!file["delay"].contains("on_write"))
     {
-      throw std::runtime_error("source file is bad! (field delay.on_write missed)");
+      throw std::runtime_error("verify_delay_field: field delay.on_write missed!");
     }
     if (!file["delay"].contains("on_roll"))
     {
-      throw std::runtime_error("source file is bad! (field delay.on_roll missed)");
+      throw std::runtime_error("verify_delay_field: field delay.on_roll missed!");
     }
     if (!file["delay"].contains("on_offset"))
     {
-      throw std::runtime_error("source file is bad! (field delay.on_offset missed)");
+      throw std::runtime_error("verify_delay_field: field delay.on_offset missed!");
     }
 
     if (!file["delay"]["on_read"].is_number_integer())
     {
-      throw std::runtime_error("source file is bad! (field delay.on_read must be integer number)");
+      throw std::runtime_error("verify_delay_field: field delay.on_read must be integer number!");
     }
     if (!file["delay"]["on_write"].is_number_integer())
     {
-      throw std::runtime_error("source file is bad! (field delay.on_write must be integer number)");
+      throw std::runtime_error("verify_delay_field: field delay.on_write must be integer number!");
     }
     if (!file["delay"]["on_roll"].is_number_integer())
     {
-      throw std::runtime_error("source file is bad! (field delay.on_roll must be integer number)");
+      throw std::runtime_error("verify_delay_field: field delay.on_roll must be integer number!");
     }
     if (!file["delay"]["on_offset"].is_number_integer())
     {
-      throw std::runtime_error("source file is bad! (field delay.on_offset must be integer number)");
+      throw std::runtime_error("verify_delay_field: field delay.on_offset must be integer number!");
     }
   }
 
@@ -54,25 +54,25 @@ namespace
   {
     if (!file.contains("physical_limit"))
     {
-      throw std::runtime_error("source file is bad! (field physical_limit missed)");
+      throw std::runtime_error("verify_phlimit_field: field physical_limit missed!");
     }
 
     if (!file["physical_limit"].contains("ram"))
     {
-      throw std::runtime_error("source file is bad! (field physical_limit.ram missed)");
+      throw std::runtime_error("verify_phlimit_field: field physical_limit.ram missed!");
     }
     if (!file["physical_limit"].contains("conv"))
     {
-      throw std::runtime_error("source file is bad! (field physical_limit.conv missed)");
+      throw std::runtime_error("verify_phlimit_field: field physical_limit.conv missed!");
     }
 
     if (!file["physical_limit"]["ram"].is_number_integer())
     {
-      throw std::runtime_error("source file is bad! (field physical_limit.ram must be integer number)");
+      throw std::runtime_error("sverify_phlimit_field: field physical_limit.ram must be integer number!");
     }
     if (!file["physical_limit"]["conv"].is_number_integer())
     {
-      throw std::runtime_error("source file is bad! (field physical_limit.conv must be integer number)");
+      throw std::runtime_error("verify_phlimit_field: field physical_limit.conv must be integer number!");
     }
   }
 }

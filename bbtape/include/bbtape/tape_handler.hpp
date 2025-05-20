@@ -20,12 +20,12 @@ namespace
   {
     if (!file.contains("tape"))
     {
-      throw std::runtime_error("source file is bad! (field tape missed)");
+      throw std::runtime_error("verify_tape_field: field tape missed!");
     }
 
     if (!file["tape"].is_array())
     {
-      throw std::runtime_error("source file is bad! (field tape must be array)");
+      throw std::runtime_error("verify_tape_field: field tape must be array!");
     }
   }
 }
@@ -36,10 +36,8 @@ namespace bb
   class tape_handler
   {
     public:
-      std::size_t id;
-
       tape_handler() = delete;
-      tape_handler(config ft_config);
+      tape_handler(config m_config);
 
       T read();
       void write(T new_data);
@@ -47,14 +45,13 @@ namespace bb
       void offset(int direction);
       void offset_if_possible(int direction);
 
-      void setup_tape(std::unique_ptr< unit< T > > rhs);
-      std::unique_ptr< unit< T > > release_tape();
-      bool is_available() const;
-
       void take();
       void free();
-      bool is_reserved() const;
+      void setup_tape(unique_unit< T > rhs);
+      unique_unit< T > release_tape();
 
+      bool is_available() const;
+      bool is_reserved() const;
       std::size_t get_pos() const;
       std::size_t size() const;
 
@@ -100,6 +97,7 @@ bb::tape_handler< T >::tape_handler(config rhs):
   __delay_on_write(rhs.m_delay.on_write),
   __delay_on_roll(rhs.m_delay.on_roll),
   __delay_on_offset(rhs.m_delay.on_offset),
+
   __is_reserved(false)
 {}
 
@@ -216,27 +214,11 @@ bb::tape_handler< T >::offset_if_possible(int direction)
 
 template< bb::unit_type T >
 void
-bb::tape_handler< T >::setup_tape(std::unique_ptr< unit< T > > rhs)
+bb::tape_handler< T >::setup_tape(unique_unit< T > rhs)
 {
   std::lock_guard< std::mutex > lock(__mutex);
   __tape = std::move(rhs);
   __pos = 0;
-}
-
-template< bb::unit_type T >
-std::unique_ptr< bb::unit< T > >
-bb::tape_handler< T >::release_tape()
-{
-  std::lock_guard< std::mutex > lock(__mutex);
-  return std::move(__tape);
-}
-
-template< bb::unit_type T >
-bool
-bb::tape_handler< T >::is_available() const
-{
-  std::lock_guard< std::mutex > lock(__mutex);
-  return !__tape;
 }
 
 template< bb::unit_type T >
@@ -263,6 +245,22 @@ bb::tape_handler< T >::free()
   }
 
   __is_reserved = false;
+}
+
+template< bb::unit_type T >
+bb::unique_unit< T >
+bb::tape_handler< T >::release_tape()
+{
+  std::lock_guard< std::mutex > lock(__mutex);
+  return std::move(__tape);
+}
+
+template< bb::unit_type T >
+bool
+bb::tape_handler< T >::is_available() const
+{
+  std::lock_guard< std::mutex > lock(__mutex);
+  return !__tape;
 }
 
 template< bb::unit_type T >
