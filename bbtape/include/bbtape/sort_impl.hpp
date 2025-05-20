@@ -68,8 +68,11 @@ namespace
 namespace bb
 {
   template< unit_type T >
+  using shared_ths_view = shared_tape_handlers_view< T >;
+
+  template< unit_type T >
   std::pair< file_handler, unique_ram< T > >
-  strategy(const file_handler & src, shared_tape_handlers_view< T > ths, unique_ram< T > ram, std::size_t blk_size, std::size_t threads);
+  strategy(const file_handler & src, shared_ths_view< T > ths, unique_ram< T > ram, std::size_t blk, std::size_t threads);
 
   template< unit_type T >
   std::tuple< file_handler, unique_unit< T >, unique_ram< T > >
@@ -82,7 +85,7 @@ namespace bb
 
 template< bb::unit_type T >
 std::pair< bb::file_handler, bb::unique_ram< T > >
-bb::strategy(const file_handler & src, shared_tape_handlers_view< T > ths, unique_ram< T > ram, std::size_t block_size, std::size_t threads)
+bb::strategy(const file_handler & src, shared_ths_view< T > ths, unique_ram< T > ram, std::size_t blk, std::size_t threads)
 {
   if (ths.size() < 1)
   {
