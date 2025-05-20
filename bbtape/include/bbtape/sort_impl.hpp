@@ -93,7 +93,7 @@ bb::strategy(const file_handler & src, shared_ths_view< T > ths, unique_ram< T >
   }
 
   file_handler dst;
-  ram_handler rhandler(std::move(ram), block_size);
+  ram_handler rhandler(std::move(ram), blk);
 
   using sort_tuple = std::tuple< std::future< fs::path >, shared_tape_handler< T >, ram_view< T > >;
   std::queue< sort_tuple > sort_queue;

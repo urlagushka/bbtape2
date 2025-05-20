@@ -79,7 +79,7 @@
 
 Количество устройств задается в конфигурационном файле.
 
-### Пример сортировок
+### Примеры сортировок
 Входной файл:
 ```
 {
@@ -90,7 +90,7 @@
     "on_offset": 5
   },
   "physical_limit": {
-    "ram": 256,
+    "ram": XXX,
     "conv": 1
   },
   "tape": [961, 720, 689, ..., 931, 435, 309]
@@ -101,12 +101,18 @@ ram - размер ОЗУ в байтах
 conv - количество устройств
 tape - исходная лента
 ```
-
-![result](https://github.com/urlagushka/bbtape/blob/main/result.png)
-
 Тестируемый тип - int32_t. Количество элементов в исходном файле - 1000.
-При тестировании количество устройств (conv) увеличивалось от 1 до 8.
+При тестировании количество устройств (conv) увеличивалось от 1 до N.
 Как можно заметить, в один момент время сортировки перестает уменьшаться (с ростом количества устройств, блок ОЗУ для слияния становится меньше)
+
+#### ram: 256
+![ram256](https://github.com/urlagushka/bbtape/blob/main/pictures/ram256.png)
+#### ram: 512
+![ram512](https://github.com/urlagushka/bbtape/blob/main/pictures/ram512.png)
+#### ram: 1024
+![ram1024](https://github.com/urlagushka/bbtape/blob/main/pictures/ram1024.png)
+#### ram: 2048
+![ram2048](https://github.com/urlagushka/bbtape/blob/main/pictures/ram2048.png)
 
 ### Сборка и запуск
 #### MacOS (необходим gcc14)
