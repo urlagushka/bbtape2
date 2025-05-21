@@ -75,7 +75,7 @@ template< bb::unit_type T >
 void
 bb::ram_handler< T >::free_ram_block(ram_view< T > block)
 {
-  if (block.data() - __ram->data() < 0)
+  if (block.data() - __ram->data() < 0 || block.data() > __ram->data() + __ram->size())
   {
     throw std::runtime_error("block is not owned by ram!");
   }

@@ -53,20 +53,7 @@ template< bb::unit_type T >
 bool
 bb::utils::soft_sort_validation(const bb::unit< T > & src)
 {
-  if (src.size() <= 1)
-  {
-    return true;
-  }
-
-  for (std::size_t i = 1; i < src.size(); ++i)
-  {
-    if (src[i] < src[i - 1])
-    {
-      return false;
-    }
-  }
-
-  return true;
+  return std::is_sorted(src.cbegin(), src.cend());
 }
 
 #endif

@@ -1,5 +1,7 @@
 add_executable(bbtape_tests
     balance_ram_test.cpp
+    ram_handler_test.cpp
+    tape_handler_test.cpp
 )
 
 target_link_libraries(bbtape_tests
