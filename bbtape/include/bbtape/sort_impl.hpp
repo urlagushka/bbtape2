@@ -253,7 +253,6 @@ bb::merge(shared_tape_handler< T > th, const fs::path & lhs, const fs::path & rh
       assert(lhs_ram.size() + rhs_ram.size() == ram.size());
     }
 
-
     if (lhs_ram_pos == to_write_lhs)
     {
       th->setup_tape(std::move(lhs_tape));
