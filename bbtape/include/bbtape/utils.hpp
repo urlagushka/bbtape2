@@ -28,25 +28,32 @@ namespace bb::utils
   void
   verify_file_path(const std::filesystem::path & path);
 
-  template < typename duration_type >
-  requires requires {
-    typename duration_type::rep;
-    typename duration_type::period;
-  }
+  template< typename T >
+  concept duration_type = requires()
+  {
+    typename T::rep;
+    typename T::period;
+  };
+
+  template < duration_type T >
   struct time_diff
   {
     ch::time_point< ch::high_resolution_clock > start = ch::high_resolution_clock::now();
 
-    duration_type get()
-    {
-      auto end = ch::high_resolution_clock::now();
-      return ch::duration_cast< duration_type >(end - start);
-    }
+    T get();
   };
 
   template< bb::unit_type T >
   bool
   soft_sort_validation(const bb::unit< T > & src);
+}
+
+template< bb::utils::duration_type T >
+T
+bb::utils::time_diff< T >::get()
+{
+  auto end = ch::high_resolution_clock::now();
+  return ch::duration_cast< T >(end - start);
 }
 
 template< bb::unit_type T >
