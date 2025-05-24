@@ -120,7 +120,7 @@ tape - исходная лента
 -- если не установлен gcc14
 brew install gcc
 
-git clone https://github.com/urlagushka/bbtape.git
+git clone https://github.com/urlagushka/bbtape2.git
 
 cd bbtape
 mkdir build && cd build
@@ -141,7 +141,7 @@ ctest -V
 
 #### Linux
 ```
-git clone https://github.com/urlagushka/bbtape.git
+git clone https://github.com/urlagushka/bbtape2.git
 
 cd bbtape
 mkdir build && cd build
