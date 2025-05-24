@@ -108,7 +108,7 @@ bb::external_merge_sort(config m_config, const fs::path & src, const fs::path & 
     ram = std::move(std::get< 1 >(merge));
 
     thread_amount = std::min(thread_amount, tmp_files.size() / 2);
-    block_size = ram_size / thread_amount;
+    block_size = (thread_amount == 0) ? 0 : ram_size / thread_amount;
   }
   auto tape = read_tape_from_file< T >(tmp_files[0]);
   write_tape_to_file(dst, tape);
