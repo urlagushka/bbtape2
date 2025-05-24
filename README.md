@@ -122,7 +122,7 @@ brew install gcc
 
 git clone https://github.com/urlagushka/bbtape2.git
 
-cd bbtape
+cd bbtape2
 mkdir build && cd build
 
 cmake -DCMAKE_C_COMPILER=/opt/homebrew/Cellar/gcc/14.2.0_1/bin/gcc-14 \
@@ -143,7 +143,7 @@ ctest -V
 ```
 git clone https://github.com/urlagushka/bbtape2.git
 
-cd bbtape
+cd bbtape2
 mkdir build && cd build
 
 cmake ..
